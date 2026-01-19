@@ -10,7 +10,7 @@
             padding: 30px;
         }
         .container {
-            max-width: 650px;
+            max-width: 700px;
             margin: auto;
             background: #ffffff;
             padding: 25px;
@@ -55,14 +55,14 @@
 <div class="container">
     <h2>🍎 AI Diet Coach</h2>
 
-    <label>Food eaten (use underscore for spaces)</label>
-    <input id="food" placeholder="e.g., rice, paneer_curry, boiled_egg">
+    <label>Food eaten (comma separated, use underscore)</label>
+    <input id="food" placeholder="rice, paneer_curry, boiled_egg">
 
-    <label>Servings</label>
-    <input type="number" id="quantity">
+    <label>Servings (per food)</label>
+    <input type="number" id="quantity" value="1">
 
     <label>Meals skipped today</label>
-    <input type="number" id="skipped">
+    <input type="number" id="skipped" value="0">
 
     <label>Weight (kg)</label>
     <input type="number" id="weight">
@@ -76,9 +76,7 @@
 </div>
 
 <script>
-/* -----------------------------
-   TEXT TO SPEECH
------------------------------ */
+/* TEXT TO SPEECH */
 function speak(text) {
     const msg = new SpeechSynthesisUtterance(text);
     msg.rate = 0.9;
@@ -86,19 +84,14 @@ function speak(text) {
     window.speechSynthesis.speak(msg);
 }
 
-/* -----------------------------
-   CALORIE DATABASE (EXTENDED)
------------------------------ */
+/* CALORIE DATABASE */
 const calorieDB = {
-    // Staples
     rice: 200,
     brown_rice: 170,
     chapati: 100,
     roti: 100,
     naan: 260,
     paratha: 180,
-
-    // Indian foods
     dal: 180,
     rajma: 220,
     chole: 240,
@@ -106,54 +99,31 @@ const calorieDB = {
     curd: 90,
     idli: 60,
     dosa: 170,
-    vada: 140,
-    sambar: 120,
     poha: 150,
     upma: 180,
     khichdi: 210,
     biryani: 350,
-
-    // Fast food
     pizza: 300,
     burger: 320,
-    fries: 260,
     noodles: 250,
     pasta: 280,
     sandwich: 230,
     momos: 220,
-
-    // Healthy
     salad: 80,
     soup: 120,
     sprouts: 100,
     boiled_egg: 78,
     omelette: 120,
-
-    // Fruits
     apple: 95,
     banana: 105,
     orange: 60,
     mango: 135,
-    grapes: 70,
-    papaya: 55,
-
-    // Drinks
     milk: 150,
     tea: 70,
-    coffee: 90,
-    juice: 120,
-    soft_drink: 140,
-
-    // Snacks
-    biscuit: 90,
-    chocolate: 210,
-    cake: 280,
-    ice_cream: 200
+    coffee: 90
 };
 
-/* -----------------------------
-   FUNCTIONS
------------------------------ */
+/* HELPER FUNCTIONS */
 function calculateBMI(weight, heightCm) {
     let h = heightCm / 100;
     return (weight / (h * h)).toFixed(2);
@@ -161,59 +131,66 @@ function calculateBMI(weight, heightCm) {
 
 function healthyAlternative(food) {
     if (food === "pizza" || food === "burger")
-        return "Try chapati, dal, and vegetables instead of junk food.";
+        return "Avoid junk food. Choose chapati, dal, and vegetables.";
     if (food === "noodles")
         return "Try poha or upma instead of noodles.";
-    return "Good choice! Add fruits or vegetables.";
+    return "Good food choice. Maintain balance.";
 }
 
 function balancedDiet(bmi) {
     if (bmi < 18.5)
-        return "You are underweight. Add protein-rich foods like eggs, dairy, and dal.";
+        return "You are underweight. Increase protein and calories.";
     else if (bmi <= 24.9)
-        return "Your BMI is healthy. Maintain a balanced diet.";
+        return "Your BMI is normal. Keep a balanced diet.";
     else
-        return "You are overweight. Reduce junk foods and increase vegetables.";
+        return "You are overweight. Reduce sugar and fried foods.";
 }
 
 function hydrationAdvice(skipped) {
-    if (skipped >= 1)
-        return "Since you skipped a meal, drink more water to maintain energy.";
-    return "Great! Drink at least six to eight glasses of water daily.";
+    return skipped >= 1
+        ? "Drink more water since you skipped meals."
+        : "Drink 6–8 glasses of water daily.";
 }
 
-/* -----------------------------
-   MAIN AI COACH
------------------------------ */
+/* MAIN AI LOGIC */
 function aiDietCoach() {
-    const food = document.getElementById("food").value.toLowerCase();
+    const foods = document.getElementById("food").value.toLowerCase().split(",");
     const quantity = parseInt(document.getElementById("quantity").value);
     const skipped = parseInt(document.getElementById("skipped").value);
     const weight = parseFloat(document.getElementById("weight").value);
     const height = parseFloat(document.getElementById("height").value);
 
+    let totalCalories = 0;
+    let breakdown = "";
+
+    foods.forEach(f => {
+        const food = f.trim();
+        if (calorieDB[food]) {
+            const cal = calorieDB[food] * quantity;
+            totalCalories += cal;
+            breakdown += `${food.replace("_"," ")}: ${cal} kcal<br>`;
+        } else {
+            breakdown += `${food.replace("_"," ")}: Not available<br>`;
+        }
+    });
+
     const bmi = calculateBMI(weight, height);
-    const calories = calorieDB[food] ? calorieDB[food] * quantity : null;
-    const alt = healthyAlternative(food);
+    const alt = healthyAlternative(foods[0].trim());
     const diet = balancedDiet(bmi);
     const water = hydrationAdvice(skipped);
 
     document.getElementById("report").innerHTML = `
-        <b>BMI:</b> ${bmi}<br>
-        <b>Estimated Calories:</b> ${calories ? calories + " kcal" : "Not available"}<br><br>
+        <b>BMI:</b> ${bmi}<br><br>
+        <b>Calorie Breakdown:</b><br>
+        ${breakdown}<br>
+        <b>Total Estimated Calories:</b> ${totalCalories} kcal<br><br>
         <b>Healthy Alternative:</b> ${alt}<br>
         <b>Diet Advice:</b> ${diet}<br>
         <b>Hydration Tip:</b> ${water}
     `;
 
-    speak("Your body mass index is " + bmi);
-    if (calories)
-        speak("Your estimated calorie intake is " + calories + " kilo calories");
-    else
-        speak("Calorie information is not available for this food");
-    speak(alt);
-    speak(diet);
-    speak(water);
+    speak("Your BMI is " + bmi);
+    speak("Total estimated calories are " + totalCalories + " kilo calories");
 }
 </script>
 
